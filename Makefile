@@ -29,10 +29,15 @@ getGatewayUrl := cf apps | awk '{ if ($$1 == "$(APP_GATEWAY_APP)") { print $$6; 
 
 # TODO - How to run multiple maven processes in foreground simultaneously
 start:
-	cd $(PWD)/$(CONFIG_SERVER) && $(START) & cd $(PWD)/$(SERVICE_REGISTRY) && $(START) & cd $(PWD)/$(FORTUNE_SERVICE) && $(START) & cd $(PWD)/$(GREETING_FRONTEND) && $(START) & cd $(PWD)/$(GATEWAY_APP) && $(START) && fg && fg && fg && fg && fg
+	[ -d logs ] || mkdir logs
+	cd $(PWD)/$(CONFIG_SERVER) && $(START) > $(PWD)/logs/config-server.log 2>&1 &
+	cd $(PWD)/$(SERVICE_REGISTRY) && $(START) > $(PWD)/logs/service-registry.log 2>&1 &
+	cd $(PWD)/$(FORTUNE_SERVICE) && $(START) > $(PWD)/logs/fortune-service.log 2>&1 &
+	cd $(PWD)/$(GREETING_FRONTEND) && $(START) > $(PWD)/logs/greeting-frontend.log 2>&1 &
+	cd $(PWD)/$(GATEWAY_APP) && $(START) > $(PWD)/logs/gateway-app.log 2>&1 &
 # start
 
-deploy: deploy_service_registry deploy_config_server deploy_fortune_service deploy_greeting_frontend
+deploy: deploy_service_registry deploy_config_server deploy_fortune_service deploy_greeting_frontend deploy_gateway_app
 # deploy
 
 deploy_fortune_service:
@@ -46,7 +51,7 @@ deploy_fortune_service:
 
 deploy_greeting_frontend:
 	cd $(GREETING_FRONTEND) && mvn clean package
-	cd $(GREETING_FRONTEND) && cf push $(APP_GREETING_FRONTEND) -p target/$(APP_GREETING_FRONTEND)-0.0.1-SNAPSHOT.jar -m 1G --random-route --no-start
+	cd $(GREETING_FRONTEND) && cf push $(APP_GREETING_FRONTEND) -p target/$(APP_GREETING_FRONTEND)-0.0.1-SNAPSHOT.jar -m 512M --random-route --no-start
 	cf bind-service $(APP_GREETING_FRONTEND) $(APP_CONFIG_SERVER)
 	cf bind-service $(APP_GREETING_FRONTEND) $(APP_SERVICE_REGISTRY)
 	cf set-env $(APP_GREETING_FRONTEND) TRUST_CERTS $$($(getGreetingUrl))
@@ -55,7 +60,7 @@ deploy_greeting_frontend:
 
 deploy_gateway_app:
 	cd $(GATEWAY_APP) && mvn clean package
-	cd $(GATEWAY_APP) && cf push $(APP_GATEWAY_APP) -p target/$(APP_GATEWAY_APP)-0.0.1-SNAPSHOT.jar -m 1G --random-route --no-start
+	cd $(GATEWAY_APP) && cf push $(APP_GATEWAY_APP) -p target/$(APP_GATEWAY_APP)-0.0.1-SNAPSHOT.jar -m 512M --random-route --no-start
 	cf bind-service $(APP_GATEWAY_APP) $(APP_CONFIG_SERVER)
 	cf bind-service $(APP_GATEWAY_APP) $(APP_SERVICE_REGISTRY)
 	cf set-env $(APP_GATEWAY_APP) TRUST_CERTS $$($(getGatewayUrl))
