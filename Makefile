@@ -23,6 +23,7 @@ endef
 
 getGreetingUrl := cf apps | awk '{ if ($$1 == "$(APP_GREETING_FRONTEND)") { print $$6; } }'
 getFortuneUrl := cf apps | awk '{ if ($$1 == "$(APP_FORTUNE_SERVICE)") { print $$6; } }'
+getGatewayUrl := cf apps | awk '{ if ($$1 == "$(APP_GATEWAY_APP)") { print $$6; } }'
 
 .PHONY: *
 
@@ -50,6 +51,15 @@ deploy_greeting_frontend:
 	cf bind-service $(APP_GREETING_FRONTEND) $(APP_SERVICE_REGISTRY)
 	cf set-env $(APP_GREETING_FRONTEND) TRUST_CERTS $$($(getGreetingUrl))
 	cf start $(APP_GREETING_FRONTEND)
+# deploy_greeting_frontend
+
+deploy_gateway_app:
+	cd $(GATEWAY_APP) && mvn clean package
+	cd $(GATEWAY_APP) && cf push $(APP_GATEWAY_APP) -p target/$(APP_GATEWAY_APP)-0.0.1-SNAPSHOT.jar -m 1G --random-route --no-start
+	cf bind-service $(APP_GATEWAY_APP) $(APP_CONFIG_SERVER)
+	cf bind-service $(APP_GATEWAY_APP) $(APP_SERVICE_REGISTRY)
+	cf set-env $(APP_GATEWAY_APP) TRUST_CERTS $$($(getGatewayUrl))
+	cf start $(APP_GATEWAY_APP)
 # deploy_greeting_frontend
 
 deploy_config_server:
